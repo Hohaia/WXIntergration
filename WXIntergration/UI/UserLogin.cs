@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
@@ -8,27 +9,23 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
+using DataAccessLayer.Repositories;
+
 namespace WXIntergration.UI
 {
     public partial class UserLogin : Form
     {
-        //private readonly IIngredientsRepository _ingredientsRepository;
-
         private bool _errorOccured = false;
         public UserLogin()
         {
             InitializeComponent();
-            //InitializeComponent(IIngredientsRepository ingredientsRepository);
-            //_ingredientsRepository = ingredientsRepository;
+            //InitializeComponent(IControllerAPI controllerAPI);
+            //_controllerAPI = controllerAPI;
 
-            //_ingredientsRepository.OnError += OnErrorOccured;
+            //_controllerAPI.OnError += OnErrorOccured;
         }
 
         // BACKGROUND METHODS //
-        private void Login()
-        {
-
-        }
 
         // UI METHODS //
         private void ExitBtn_Click(object sender, EventArgs e)
@@ -44,9 +41,37 @@ namespace WXIntergration.UI
             PasswordTxt.Clear();
         }
 
-        private void LoginBtn_Click(object sender, EventArgs e)
+        private async void LoginBtn_Click(object sender, EventArgs e)
         {
-            Login();
+            string errorMessage = "";
+            bool https = false;
+            string isHttps = "";
+            string domain = DomainTxt.Text;
+            string userName = UsernameTxt.Text;
+            string password = PasswordTxt.Text;
+            string passwordHash = await ControllerAPI.Sha1FromString(password);
+
+            if (HttpsChck.Checked)
+            {
+                https = true;
+                isHttps = "(HTTPS)";
+            }
+
+            ControllerAPI controllerAPI = new ControllerAPI(domain, https);
+
+            bool loggedIn = await controllerAPI.LogIn(userName, passwordHash.ToLower());
+            if (!loggedIn)
+            {
+                errorMessage += $"\n Failed to log in. {isHttps}";
+                MessageBox.Show(errorMessage);
+                return;
+            }
+
+            NameValueCollection details = await controllerAPI.GetControllerSettings();
+            string? serialNum = details["SERIALNUMBER"];
+            MessageBox.Show($"Controllers serial number is: [{serialNum}] {isHttps}");
+
+            await controllerAPI.LogOut();
         }
     }
 }
